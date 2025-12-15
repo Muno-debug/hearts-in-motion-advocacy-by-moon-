@@ -4,594 +4,555 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HEARTS IN MOTION: Beyond Compliance - MOON Edition</title>
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Firebase Modules (Required for Firestore and Auth) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-
-        // Global variables for Firebase and App State
-        window.app = null;
-        window.db = null;
-        window.auth = null;
-        window.userId = null;
-        
-        // Firestore path helpers
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const PACTS_COUNT_PATH = `/artifacts/${appId}/public/data/globalMetrics/pactCount`;
-
-        // Firebase Initialization and Authentication
-        async function initializeFirebase() {
-            try {
-                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-                window.app = initializeApp(firebaseConfig);
-                setLogLevel('debug'); // Enable Firestore logging
-                window.db = getFirestore(window.app);
-                window.auth = getAuth(window.app);
-
-                // Sign in using custom token or anonymously
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-                if (initialAuthToken) {
-                    await signInWithCustomToken(window.auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(window.auth);
-                }
-
-                // Wait for auth state to stabilize and get user ID
-                onAuthStateChanged(window.auth, (user) => {
-                    if (user) {
-                        window.userId = user.uid;
-                        console.log("Firebase initialized. User ID:", window.userId);
-                        // Start real-time listener for the counter
-                        setupCounterListener();
-                    } else {
-                        console.error("User not authenticated.");
-                    }
-                });
-
-            } catch (error) {
-                console.error("Error initializing Firebase:", error);
-                document.getElementById('pactCount').textContent = 'Error loading count.';
-            }
-        }
-
-        // Real-time listener for the global counter
-        function setupCounterListener() {
-            if (!window.db) return;
-
-            const docRef = doc(window.db, PACTS_COUNT_PATH);
-            onSnapshot(docRef, (docSnap) => {
-                const countElement = document.getElementById('pactCount');
-                let count = 0;
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    count = data.totalCommitments || 0;
-                    countElement.textContent = count.toLocaleString();
-                } else {
-                    // Document doesn't exist yet, initialize it
-                    setDoc(docRef, { totalCommitments: 0, lastUpdated: new Date().toISOString() }, { merge: true });
-                    countElement.textContent = '0';
-                }
-                // Update the visual glow based on the count (more commits = more glow)
-                const glowIntensity = Math.min(count / 100, 1) * 25; // Scale 0 to 25px blur
-                document.getElementById('moonHeartIcon').style.filter = `drop-shadow(0 0 ${glowIntensity}px rgba(125, 211, 252, 1))`;
-
-            }, (error) => {
-                console.error("Error setting up counter listener:", error);
-                document.getElementById('pactCount').textContent = 'Failed to load counter.';
-            });
-        }
-
-        // Function to increment the counter
-        window.commitPact = async function() {
-            if (!window.db || !window.userId) {
-                console.error("Database not ready or user not authenticated.");
-                showCustomMessage("Commitment recorded locally. Please wait for the system to initialize to track globally.", 'yellow');
-                return;
-            }
-
-            const docRef = doc(window.db, PACTS_COUNT_PATH);
-            try {
-                await setDoc(docRef, { totalCommitments: increment(1), lastUpdated: new Date().toISOString() }, { merge: true });
-                // Hide modal and show confirmation
-                document.getElementById('supportModal').style.display = 'none';
-                showCustomMessage("✅ Success! Your commitment has been recorded globally.", 'green');
-            } catch (error) {
-                console.error("Error incrementing commitment count:", error);
-                showCustomMessage("Error recording commitment. Check your network connection.", 'red');
-            }
-        };
-        
-        // Custom message box function (replaces alert/confirm)
-        function showCustomMessage(message, type) {
-            const msgBox = document.getElementById('customMessageBox');
-            msgBox.textContent = message;
-            msgBox.className = `fixed top-4 left-1/2 transform -translate-x-1/2 p-4 rounded-lg shadow-2xl z-20 transition-opacity duration-300 ${type === 'green' ? 'bg-green-600' : type === 'red' ? 'bg-red-600' : 'bg-yellow-600'} text-white`;
-            msgBox.classList.remove('hidden');
-            msgBox.style.opacity = '1';
-            setTimeout(() => {
-                msgBox.style.opacity = '0';
-                setTimeout(() => msgBox.classList.add('hidden'), 300);
-            }, 5000);
-        }
-
-        // Start initialization on load
-        window.onload = initializeFirebase;
-    </script>
     <style>
-        /* MOON VIBES: Dark, luminous, high-contrast theme */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0C182B; /* Deep Navy Night Sky */
-            color: #E9EAE0; /* Off-White/Lunar Text */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .bg-primary { background-color: #0d1117; }
+        .text-accent { color: #58a6ff; }
+        .border-accent { border-color: #58a6ff; }
+        .shadow-glow { box-shadow: 0 0 10px rgba(88, 166, 255, 0.5); }
+        .gradient-bg { background-image: linear-gradient(180deg, #1c222c, #0d1117); }
+
+        /* Heart Beat Animation */
+        @keyframes beat {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            30% { transform: scale(1.15); opacity: 0.8; }
         }
-        .section-card {
-            background-color: #1A2943; /* Darker Blue Card */
-            padding: 2.5rem 2rem; 
-            border-radius: 1.5rem; 
-            box-shadow: 0 0 15px rgba(125, 211, 252, 0.2); /* Soft Pale Blue Glow */
-            margin-bottom: 2.5rem; 
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border: 1px solid #334155;
+        .heart-beat {
+            animation: beat 1.5s ease-in-out infinite;
         }
-        .section-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 0 25px rgba(125, 211, 252, 0.5); /* Enhanced Glow on Hover */
-        }
-        .accent-text {
-            color: #7DD3FC; /* Moonlight Blue Accent */
-            text-shadow: 0 0 5px rgba(125, 211, 252, 0.8); /* Text Glow */
-        }
-        /* Highlight boxes need inverse colors */
-        .highlight-yellow {
-            background-color: #3b300f; /* Darker background */
-            border-left-color: #FACC15 !important;
-        }
-        .highlight-red {
-            background-color: #451b1b;
-            border-left-color: #F87171 !important;
-        }
-        /* Modal Styles */
-        .modal-overlay {
+
+        /* Toast Notification Styles */
+        #toast-container {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            display: none; 
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+            top: 1rem;
+            right: 1rem;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
-        .modal-content {
-            background: #1A2943; 
-            color: #E9EAE0;
-            padding: 2rem;
-            border-radius: 1rem;
-            max-width: 90%;
-            width: 500px;
-            box-shadow: 0 0 20px rgba(125, 211, 252, 0.5);
-            position: relative;
+        .toast {
+            background-color: #1a232b;
+            color: #d1d5db;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            max-width: 300px;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            transform: translateX(100%);
         }
-        .faq-question {
-            cursor: pointer;
-            transition: color 0.3s;
-        }
-        .faq-question:hover {
-            color: #7DD3FC;
-        }
-        .faq-answer {
-            display: none;
-            color: #B0B9C9;
-        }
-        .lang-switcher button {
-            transition: background-color 0.3s;
-        }
-        /* Moon Heart Icon Animation */
-        @keyframes pulse-glow {
-            0% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.05); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.8; }
-        }
-        .pulse {
-            animation: pulse-glow 2s infinite ease-in-out;
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
         }
     </style>
 </head>
-<body class="p-4 md:p-12">
+<body class="bg-primary text-gray-100 min-h-screen">
 
-    <!-- Custom Message Box (Replaces Alert/Confirm) -->
-    <div id="customMessageBox" class="hidden"></div>
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
 
-    <!-- Header Section -->
-    <header class="text-center mb-16">
-        <div class="flex justify-between items-center max-w-5xl mx-auto mb-4">
-            <!-- Language Switcher -->
-            <div class="lang-switcher text-sm text-gray-400">
-                <button class="px-2 py-1 bg-blue-900 rounded-lg text-blue-300 font-bold">English</button>
-                <button class="px-2 py-1 hover:bg-gray-700 rounded-lg">Shona</button>
-            </div>
-            <!-- Empty space on the right for balance -->
-            <div class="w-20"></div>
-        </div>
-
-        <!-- Dynamic Moon Heart Icon -->
-        <div id="moonHeartIcon" class="inline-block pulse mb-4" style="filter: drop-shadow(0 0 0px rgba(125, 211, 252, 1)); transition: filter 0.5s;">
-            <!-- Simple SVG of a stylized Moon and Heart -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#7DD3FC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-heart text-blue-300">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.66l-1.06-1.05a5.5 5.5 0 0 0-7.78 7.78l1.06 1.05L12 21.23l7.78-7.78 1.06-1.05a5.5 5.5 0 0 0 0-7.78z"></path>
-                <!-- Moon Crater Detail -->
-                <circle cx="10" cy="8" r="1.5" fill="#1A2943" stroke="none"/>
-                <circle cx="14" cy="11" r="1" fill="#1A2943" stroke="none"/>
-            </svg>
-        </div>
-
-        <h1 class="text-5xl md:text-6xl font-extrabold mb-3 leading-tight accent-text">
-            HEARTS IN MOTION
-        </h1>
-        <p class="text-2xl md:text-3xl text-gray-300 font-medium">
-            Beyond Compliance—Hypertension is a System Problem
-        </p>
-    </header>
-
-    <!-- Global Community Impact Counter -->
-    <div class="max-w-5xl mx-auto mb-12 p-6 text-center bg-gray-800 border-b-4 border-green-500 rounded-lg shadow-md">
-        <p class="text-xl font-medium text-green-400">Total Global Support Pacts Committed:</p>
-        <div id="pactCount" class="text-6xl font-extrabold text-green-300 animate-pulse text-shadow-lg" style="text-shadow: 0 0 10px rgba(74, 222, 128, 0.8);">
-            Loading...
-        </div>
-        <p class="text-sm text-gray-400 mt-1">This number updates in real-time as users commit to the action plan.</p>
-    </div>
-
-    <!-- Main Content Grid -->
-    <main class="max-w-5xl mx-auto">
-        <!-- Section 1: The Crisis & Structural Truth (Reframed) -->
-        <section id="truth" class="section-card bg-pink-900 bg-opacity-30 border-2 border-pink-700">
-            <div class="text-4xl font-extrabold mb-6 text-pink-400 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mr-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-9.618 9.04A12.004 12.004 0 0012 21a12.004 12.004 0 009.618-7.016z" />
-                </svg>
-                1. The Structural Truth: Why We Must Change
-            </div>
-            <p class="text-gray-200 text-xl font-medium leading-relaxed mb-4">
-                Hypertension affects 30-33% of adults in peri-urban African settings. The failure is rooted in **Structural Violence**—systemic barriers like transport costs, clinic distance, and poor policy—not individual patient failure.
-            </p>
-            <p class="text-gray-300 text-xl font-semibold border-l-4 border-red-500 pl-4 py-3 highlight-red rounded-lg">
-                **Reframing:** Suffering is produced by flawed social arrangements. Our solution focuses on fixing the stress-inducing structure, not just the symptom.
-            </p>
-        </section>
-
-        <!-- Section 2: The Unseen Burden (Systems Thinking/CLD with Interactive Graph) -->
-        <section id="burden" class="section-card">
-            <div class="text-3xl font-bold mb-4 flex items-center accent-text">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10l2 2 6-6m-3-3l3-3m-3 3l3-3m0 0l-3 3m3 3l-3-3m6 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                2. Systems Pressure: The R-Loop Visualized
-            </div>
-            <p class="text-gray-300 text-lg mb-6 leading-relaxed">
-                The **Caregiving Drain** is a **Reinforcing Loop (R-Loop)** where stress perpetuates poor adherence. Use the slider below to model the impact:
-            </p>
-
-            <!-- Interactive CLD Visualization -->
-            <div class="p-4 highlight-yellow rounded-lg border">
-                <h4 class="font-bold text-lg mb-3 text-yellow-300">Interactive CLD Demo: Caregiving Burden vs. Adherence</h4>
-                <canvas id="rLoopCanvas" width="400" height="200" class="w-full"></canvas>
-                
-                <label for="burdenSlider" class="block mt-4 text-gray-300">Adjust Caregiving Burden/Stress Level:</label>
-                <input type="range" id="burdenSlider" min="0" max="100" value="50" class="w-full h-2 bg-yellow-900 rounded-lg appearance-none cursor-pointer range-lg">
-                <div class="flex justify-between text-sm text-gray-400">
-                    <span>Low Burden</span>
-                    <span>High Burden</span>
+    <div class="max-w-4xl mx-auto p-4 md:p-8">
+        <!-- Header & Language Toggle -->
+        <header class="mb-10 pt-4">
+            <div class="flex justify-between items-center mb-6">
+                <!-- Language Toggle Mockup -->
+                <div class="text-sm font-semibold flex space-x-2 p-1 bg-gray-800 rounded-lg">
+                    <span id="lang-en" class="cursor-pointer px-3 py-1 bg-accent text-primary rounded-md transition duration-200">English</span>
+                    <span id="lang-sh" class="cursor-pointer px-3 py-1 hover:bg-gray-700 rounded-md transition duration-200">Shona</span>
                 </div>
+                <!-- Above the Fold CTA -->
+                <a href="#action-section" class="text-sm text-accent hover:text-blue-400 underline font-medium transition duration-200">
+                    Skip to the Solution: Start Your 15-Minute Support Pact
+                </a>
             </div>
-            
-            <p class="text-gray-300 text-xl font-semibold border-l-4 border-yellow-500 pl-4 py-3 mt-6 highlight-yellow">
-                **Insight:** Stress makes medication adherence harder, worsening health, which increases stress. Disruption is required.
-            </p>
+
+            <!-- Main Title -->
+            <h1 class="text-4xl md:text-5xl font-extrabold text-white leading-tight flex items-center">
+                <span class="mr-3 heart-beat text-red-500 text-3xl md:text-4xl">❤</span>
+                HEARTS IN MOTION
+            </h1>
+            <h2 class="text-xl md:text-2xl text-accent font-light mt-1">
+                Beyond Compliance—Hypertension is a System Problem
+            </h2>
+        </header>
+
+        <!-- Global Support Counter -->
+        <div class="text-center py-6 mb-10 border-b border-t border-gray-700 bg-gray-900 rounded-xl shadow-lg">
+            <p class="text-gray-400 text-sm mb-2 uppercase tracking-widest">Total Global Support Pacts Committed:</p>
+            <div class="text-6xl md:text-7xl font-mono font-bold text-green-400">
+                <span id="pacts-counter">4,120</span>
+            </div>
+            <p class="text-gray-500 text-xs mt-2">This number updates in real-time as users commit to the action plan.</p>
+        </div>
+
+        <!-- 1. The Structural Truth -->
+        <section class="mb-12">
+            <h3 class="text-2xl md:text-3xl font-semibold mb-4 text-white">
+                1. It's Not Your Fault: How the System is Making You Sick
+            </h3>
+            <div class="space-y-4 text-gray-300 leading-relaxed">
+                <p>Hypertension affects 30-33% of adults in peri-urban African settings. The failure is rooted in **Structural Violence**—systemic barriers like transport costs, clinic distance, and poor policy—not individual patient failure.</p>
+                
+                <p class="p-3 bg-gray-800 border-l-4 border-accent rounded-lg">
+                    <strong class="text-accent">Concept Analogy:</strong> Think of it like trying to run a race with ankle weights—the weights (unaffordable clinics, lack of support, chronic stress) are the problem, not your effort.
+                </p>
+
+                <p>**Reframing:** Suffering is produced by flawed social arrangements. Our solution focuses on fixing the stress-inducing structure, not just the symptom.</p>
+            </div>
         </section>
 
-        <!-- New Section 3: Structural Stress Self-Assessment (HFE/Personalization) -->
-        <section id="assessment" class="section-card bg-blue-900 bg-opacity-30 border-2 border-blue-700">
-            <div class="text-3xl font-bold mb-4 flex items-center text-blue-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                3. Calculate Your Structural Stress Score
+        <!-- 2. Systems Pressure: The R-Loop Visualized -->
+        <section class="mb-12">
+            <h3 class="text-2xl md:text-3xl font-semibold mb-4 text-white">
+                2. Systems Pressure: Visualizing The Stress Trap
+            </h3>
+            <p class="mb-6 text-gray-300">
+                The **Caregiving Drain** is a **Vicious Cycle** (Reinforcing Loop) where stress perpetuates poor adherence. Use the slider below to model the impact:
+            </p>
+
+            <!-- Interactive CLD Demo -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-xl">
+                <h4 class="text-lg font-medium mb-4 text-white">Interactive Demo: Caregiving Burden vs. Adherence</h4>
+                
+                <div class="mb-6">
+                    <label for="burdenSlider" class="block mb-2 text-sm font-medium text-gray-300">Adjust Caregiving Burden/Stress Level:</label>
+                    <input type="range" id="burdenSlider" min="0" max="100" value="50" class="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer range-lg">
+                    <div class="flex justify-between text-xs mt-2 text-gray-400">
+                        <span>Low Burden (Low Stress Trap)</span>
+                        <span>High Burden (Severe Stress Trap)</span>
+                    </div>
+                </div>
+
+                <!-- Visualization Feedback -->
+                <div class="flex flex-col items-center justify-center p-4 rounded-lg bg-gray-900 border border-gray-700">
+                    <div id="r-loop-icon" class="text-5xl transition-all duration-300 ease-in-out" style="color: #6ee7b7;">❤️</div>
+                    <p id="r-loop-insight" class="text-sm mt-3 text-center transition-all duration-300 ease-in-out text-green-300 font-medium">
+                        Insight: Balanced support leads to better heart health and lower stress.
+                    </p>
+                </div>
+                
+                <p class="text-sm mt-4 text-gray-400">
+                    **Insight:** Stress makes medication adherence harder, worsening health, which increases stress. Disruption is required to break this **Vicious Cycle**.
+                </p>
             </div>
-            <p class="text-gray-300 text-lg mb-6 leading-relaxed">
+        </section>
+
+        <!-- 3. Calculate Your Structural Stress Score -->
+        <section class="mb-12">
+            <h3 class="text-2xl md:text-3xl font-semibold mb-4 text-white">
+                3. Calculate Your Structural Stress Score
+            </h3>
+            <p class="mb-6 text-gray-300">
                 Use this simple tool (HFE principle of low cognitive load) to quickly assess your own exposure to the structural stress that hinders adherence.
             </p>
 
-            <div class="space-y-6">
-                <!-- Question 1: Caregiving Burden -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-xl space-y-6">
+                <!-- Question 1 -->
                 <div>
-                    <label class="block text-gray-200 font-medium mb-2">Q1. Caregiving Burden: How many hours did you spend on chores/caregiving for others last week?</label>
-                    <select id="q1" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white">
-                        <option value="1">Less than 5 hours (Low Burden)</option>
-                        <option value="2">5 - 15 hours (Moderate Burden)</option>
-                        <option value="3">15 - 30 hours (High Burden)</option>
-                        <option value="4">Over 30 hours (Critical Burden)</option>
-                    </select>
+                    <p class="font-medium text-white mb-2">Q1. Caregiving Burden: How many hours did you spend on chores/caregiving for others last week?</p>
+                    <div class="space-y-2">
+                        <label class="block"><input type="radio" name="q1" value="1" class="mr-2 accent-accent" checked>Less than 5 hours (Low Burden)</label>
+                        <label class="block"><input type="radio" name="q1" value="3" class="mr-2 accent-accent">5 - 15 hours (Moderate Burden)</label>
+                        <label class="block"><input type="radio" name="q1" value="5" class="mr-2 accent-accent">15 - 30 hours (High Burden)</label>
+                        <label class="block"><input type="radio" name="q1" value="7" class="mr-2 accent-accent">Over 30 hours (Critical Burden)</label>
+                    </div>
                 </div>
 
-                <!-- Question 2: Structural Violence (Access) -->
+                <!-- Question 2 -->
                 <div>
-                    <label class="block text-gray-200 font-medium mb-2">Q2. Structural Access: How long does it take you (one way) to get to the nearest health facility?</label>
-                    <select id="q2" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white">
-                        <option value="1">Less than 15 minutes (High Access)</option>
-                        <option value="2">15 - 60 minutes</option>
-                        <option value="3">Over 60 minutes (Low Access)</option>
-                    </select>
+                    <p class="font-medium text-white mb-2">Q2. Structural Access: How long does it take you (one way) to get to the nearest health facility?</p>
+                    <div class="space-y-2">
+                        <label class="block"><input type="radio" name="q2" value="1" class="mr-2 accent-accent" checked>Less than 15 minutes (High Access)</label>
+                        <label class="block"><input type="radio" name="q2" value="3" class="mr-2 accent-accent">15 - 60 minutes</label>
+                        <label class="block"><input type="radio" name="q2" value="5" class="mr-2 accent-accent">Over 60 minutes (Low Access)</label>
+                    </div>
                 </div>
 
-                <!-- Question 3: HFE (Cognitive Load) -->
+                <!-- Question 3 -->
                 <div>
-                    <label class="block text-gray-200 font-medium mb-2">Q3. Cognitive Load: How often do you feel too stressed or tired to remember to take your medication?</label>
-                    <select id="q3" class="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white">
-                        <option value="1">Never / Rarely</option>
-                        <option value="2">Sometimes</option>
-                        <option value="3">Often / Always</option>
-                    </select>
+                    <p class="font-medium text-white mb-2">Q3. Cognitive Load: How often do you feel too stressed or tired to remember to take your medication?</p>
+                    <div class="space-y-2">
+                        <label class="block"><input type="radio" name="q3" value="1" class="mr-2 accent-accent" checked>Never / Rarely</label>
+                        <label class="block"><input type="radio" name="q3" value="3" class="mr-2 accent-accent">Sometimes</label>
+                        <label class="block"><input type="radio" name="q3" value="5" class="mr-2 accent-accent">Often / Always</label>
+                    </div>
                 </div>
 
-                <button onclick="calculateStressScore()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-lg shadow-blue-800/50 transition duration-300">
+                <button id="calculate-score-btn" class="w-full bg-accent text-primary font-bold py-3 rounded-lg hover:bg-blue-400 transition duration-200">
                     Calculate My Score
                 </button>
-            </div>
-            
-            <div id="scoreResult" class="mt-8 p-4 bg-gray-800 rounded-lg border-l-4 border-blue-400 hidden">
-                <p class="text-xl font-semibold text-blue-300 mb-2">Your Structural Stress Score is: <span id="finalScore" class="text-2xl font-extrabold">0</span> / 10</p>
-                <p id="scoreInterpretation" class="text-gray-300"></p>
+
+                <div id="score-result" class="mt-4 p-4 rounded-lg bg-gray-900 border border-gray-700 text-center">
+                    <p class="font-semibold text-xl">Your Structural Stress Score is: <span id="current-score">0 / 17</span></p>
+                    <p id="score-diagnosis" class="mt-2 text-gray-400">Answer the questions above to get your personalized diagnosis and action plan.</p>
+                </div>
             </div>
         </section>
 
-        <!-- Section 4: Simple, Stress-Proof Action (HFE) -->
-        <section id="action" class="section-card">
-            <div class="text-3xl font-bold mb-4 flex items-center accent-text">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+        <!-- 4. Action: Start Your Support Pact -->
+        <section id="action-section" class="mb-12">
+            <h3 class="text-2xl md:text-3xl font-semibold mb-4 text-white">
                 4. Action: Start Your Support Pact
-            </div>
-            <p class="text-gray-300 text-lg mb-6 leading-relaxed">
+            </h3>
+            <p class="mb-6 text-gray-300">
                 This intervention is designed using HFE principles to be **intuitive and fail-safe** by reducing cognitive load and sharing the burden.
             </p>
-            
-            <!-- Call to Action Button (Interactive - triggers modal) -->
-            <button id="openModalBtn" 
-               class="inline-block w-full text-center bg-pink-600 hover:bg-pink-700 text-white font-bold py-4 px-6 rounded-xl transition duration-300 ease-in-out shadow-lg shadow-pink-800/50 transform hover:scale-[1.02]">
-                <span class="text-3xl block">🤝 Commit to the 15-Minute Support Pact</span>
-                <span class="text-base mt-1 opacity-90 block font-light">Join the movement to share the load and save your heart.</span>
-            </button>
-        </section>
 
-        <!-- Section 5: Volunteer & Donate -->
-        <section id="support" class="section-card bg-gray-800 border-2 border-gray-700">
-            <div class="text-3xl font-bold mb-4 flex items-center text-yellow-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 01-2 2z" />
-                </svg>
-                5. Volunteer & Donate (Support Broader Change)
-            </div>
-            <p class="text-gray-300 text-lg mb-6 leading-relaxed">
-                Help us broaden our impact by supporting digital outreach and community advocacy programs that target structural barriers.
-            </p>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <a href="#" class="block text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md shadow-blue-800/50 transition duration-300">
-                    Become a Community Advocate
-                </a>
-                <a href="#" class="block text-center bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-md shadow-green-800/50 transition duration-300">
-                    Fund Our Digital Outreach
-                </a>
+            <!-- 15-Minute Support Pact Details -->
+            <div class="bg-gray-800 p-6 rounded-xl shadow-xl">
+                <h4 class="text-xl font-bold text-accent mb-4">The 15-Minute Support Pact</h4>
+                <p class="text-gray-300 mb-6">This is a practical, **low-effort, high-impact** step to disrupt the **Vicious Cycle** (Caregiving Drain).</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                    <div class="p-4 bg-gray-900 rounded-lg border border-green-500/50 shadow-md">
+                        <p class="text-4xl mb-2">1️⃣</p>
+                        <p class="font-bold text-green-400">Step 1: Find a Partner</p>
+                        <p class="text-sm text-gray-400">Someone who can spare 15 minutes a week for a shared chore or check-in.</p>
+                    </div>
+                    <div class="p-4 bg-gray-900 rounded-lg border border-green-500/50 shadow-md">
+                        <p class="text-4xl mb-2">2️⃣</p>
+                        <p class="font-bold text-green-400">Step 2: Define the 15 Minutes</p>
+                        <p class="text-sm text-gray-400">The time must be dedicated to *reducing your burden* (Low Cognitive Load).</p>
+                    </div>
+                    <div class="p-4 bg-gray-900 rounded-lg border border-green-500/50 shadow-md">
+                        <p class="text-4xl mb-2">3️⃣</p>
+                        <p class="font-bold text-green-400">Step 3: Commit & Check In</p>
+                        <p class="text-sm text-gray-400">Use a weekly message (WhatsApp/SMS) as your new support structure.</p>
+                    </div>
+                </div>
+
+                <button id="commit-pact-btn" class="mt-6 w-full bg-green-500 text-primary font-extrabold text-lg py-4 rounded-lg hover:bg-green-400 transition duration-200 shadow-lg shadow-green-500/30">
+                    🤝 I Commit! Record My Support Pact
+                </button>
+                <p id="commit-message" class="mt-3 text-center text-sm text-gray-400 hidden">Thank you for committing! Your support pact has been recorded.</p>
             </div>
         </section>
         
-        <!-- Section 6: Frequently Asked Questions (FAQ) -->
-        <section id="faq" class="section-card">
-            <div class="text-3xl font-bold mb-6 flex items-center accent-text">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9.247M12 11.45h.01M15.772 9.247M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                6. Frequently Asked Questions
-            </div>
-            <div class="space-y-4 text-gray-300">
-                <div class="border-b border-gray-700 pb-2">
-                    <h4 class="faq-question font-semibold text-lg py-1">What is the "Caregiving Drain" (R-Loop)?</h4>
-                    <p class="faq-answer mt-2 pl-4 text-sm">It is a Systems Thinking concept where increased domestic and caregiving duties (stress) lead to fatigue and lack of time, which causes poor adherence to medication, which worsens blood pressure, and in turn, increases health-related stress, perpetuating the cycle.</p>
+        <!-- Support Us: Email Submission -->
+        <section class="mb-12">
+            <h3 class="text-2xl md:text-3xl font-semibold mb-4 text-white">
+                5. Support Broader Change & Get Resources
+            </h3>
+            <p class="mb-6 text-gray-300">
+                Enter your email below to receive the 1-Page Starter Guide for your pact and to join our advocacy network.
+            </p>
+            
+            <div class="bg-gray-800 p-6 rounded-xl shadow-xl">
+                <h4 class="text-xl font-bold text-white mb-4">Join Our Digital Outreach Network</h4>
+                <div class="flex flex-col md:flex-row gap-3">
+                    <input type="email" id="support-email" placeholder="Your Email Address" class="flex-grow p-3 rounded-lg bg-gray-900 border border-gray-700 text-white placeholder-gray-500 focus:ring-accent focus:border-accent" required>
+                    <button id="submit-email-btn" class="bg-accent text-primary font-bold py-3 px-6 rounded-lg hover:bg-blue-400 transition duration-200">
+                        Sign Up for Support
+                    </button>
                 </div>
-                <div class="border-b border-gray-700 pb-2">
-                    <h4 class="faq-question font-semibold text-lg py-1">How does Structural Violence relate to my health?</h4>
-                    <p class="faq-answer mt-2 pl-4 text-sm">Structural Violence, a Medical Anthropology concept, means that your poor health outcomes are caused by social and political structures (like unaffordable clinics, weak transport, or poor policy), not by your personal choices. This shift in perspective is the first step toward collective advocacy.</p>
-                </div>
-                <div class="border-b border-gray-700 pb-2">
-                    <h4 class="faq-question font-semibold text-lg py-1">Why focus on "Low Cognitive Load"?</h4>
-                    <p class="faq-answer mt-2 pl-4 text-sm">Human Factors Engineering (HFE) principles demand that solutions be easy to use under pressure. Since hypertension patients often experience stress and high cognitive load, our action plan focuses on simple, 15-minute, zero-guilt actions to ensure feasibility and maximize adherence.</p>
-                </div>
+                <p class="text-xs mt-3 text-gray-400">
+                    Responses are usually sent within 24-48 hours. Your email will be sent to the project lead at 
+                    <a href="mailto:munotidaishe@gmail.com" class="text-accent hover:underline">munotidaishe@gmail.com</a>.
+                </p>
+                <p id="email-submit-message" class="mt-3 text-sm font-medium text-green-400 hidden">Success! Check your inbox for the Starter Guide soon.</p>
             </div>
         </section>
 
-    </main>
-
-    <!-- Modal Overlay (Hidden Interactive Layer) -->
-    <div id="supportModal" class="modal-overlay">
-        <div class="modal-content">
-            <h3 class="text-3xl font-bold text-pink-500 mb-4">The 15-Minute Support Pact</h3>
-            <p class="text-gray-300 mb-6">
-                This is a practical, **low-effort, high-impact** step to disrupt the Caregiving Drain (R-Loop).
-            </p>
+        <!-- 6. Frequently Asked Questions -->
+        <section class="mb-12">
+            <h3 class="text-2xl md:text-3xl font-semibold mb-4 text-white">
+                6. Frequently Asked Questions
+            </h3>
             
-            <div class="space-y-4 mb-8">
-                <div class="p-3 bg-gray-800 border border-gray-700 rounded-lg">
-                    <span class="font-bold text-gray-100 block">Step 1: Find a Partner</span>
-                    <span class="text-sm text-gray-400">Someone who can spare 15 minutes a week for a shared chore or check-in.</span>
-                </div>
-                <div class="p-3 bg-gray-800 border border-gray-700 rounded-lg">
-                    <span class="font-bold text-gray-100 block">Step 2: Define the 15 Minutes (Low Cognitive Load)</span>
-                    <span class="text-sm text-gray-400">The 15 minutes must be dedicated to *reducing your burden*.</span>
-                </div>
-                <div class="p-3 bg-gray-800 border border-gray-700 rounded-lg">
-                    <span class="font-bold text-gray-100 block">Step 3: Commit & Check In</span>
-                    <span class="text-sm text-gray-400">Use a weekly message (WhatsApp/SMS) as your new support structure.</span>
-                </div>
-            </div>
+            <div class="space-y-4 text-gray-300">
+                <!-- FAQ Item 1 -->
+                <details class="bg-gray-800 p-4 rounded-lg cursor-pointer transition duration-200 hover:bg-gray-700">
+                    <summary class="font-medium text-white">What is the "Caregiving Drain" (Vicious Cycle)?</summary>
+                    <p class="mt-2 text-sm">It is a Systems Thinking concept where increased domestic and caregiving duties (stress) lead to fatigue and lack of time, which causes poor adherence to medication, which worsens blood pressure, and in turn, increases health-related stress, perpetuating the **Vicious Cycle**.</p>
+                </details>
 
-            <!-- New button to close and COMMIT the pact (fires Firestore function) -->
-            <button id="commitModalBtn" onclick="window.commitPact()" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-lg transition duration-300 shadow-lg shadow-pink-800/50">
-                I Commit! Record My Support Pact
-            </button>
-            <button id="closeModalBtn" class="w-full bg-gray-600 hover:bg-gray-700 text-gray-100 font-bold py-2 mt-2 rounded-lg transition duration-300">
-                Close (Maybe Later)
-            </button>
-        </div>
+                <!-- FAQ Item 2 -->
+                <details class="bg-gray-800 p-4 rounded-lg cursor-pointer transition duration-200 hover:bg-gray-700">
+                    <summary class="font-medium text-white">How does Structural Violence relate to my health?</summary>
+                    <p class="mt-2 text-sm">Structural Violence, a Medical Anthropology concept, means that your poor health outcomes are caused by social and political structures (like unaffordable clinics, weak transport, or poor policy), not by your personal choices. This shift in perspective is the first step toward collective advocacy.</p>
+                </details>
+
+                <!-- FAQ Item 3 -->
+                <details class="bg-gray-800 p-4 rounded-lg cursor-pointer transition duration-200 hover:bg-gray-700">
+                    <summary class="font-medium text-white">Why focus on "Low Cognitive Load"?</summary>
+                    <p class="mt-2 text-sm">Human Factors Engineering (HFE) principles demand that solutions be easy to use under pressure. Since hypertension patients often experience stress and high cognitive load, our action plan focuses on simple, 15-minute, zero-guilt actions to ensure feasibility and maximize adherence.</p>
+                </details>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center py-6 text-gray-500 border-t border-gray-700 mt-10">
+            <p>© Final Project GPSI. Designed by Munotidaishe Mantiziba (MOON).</p>
+            <p class="text-sm mt-1">A system-level intervention inspired by Structural Violence, HFE, and the real voices of the community.</p>
+        </footer>
     </div>
 
-    <!-- JavaScript for Modal Interaction, Canvas Drawing, FAQ Toggling, and Quiz -->
     <script>
-        const modal = document.getElementById('supportModal');
-        const openBtn = document.getElementById('openModalBtn');
-        const closeBtn = document.getElementById('closeModalBtn');
-        const slider = document.getElementById('burdenSlider');
-        const canvas = document.getElementById('rLoopCanvas');
-        const ctx = canvas.getContext('2d');
-
-        // --- Modal Logic ---
-        openBtn.addEventListener('click', () => {
-            modal.style.display = 'flex';
-        });
-        closeBtn.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
+        // --- Firebase/API Mocks (For Demonstration) ---
+        // In a live environment, these functions would interact with a database (like Firestore)
+        const __app_id = 'hearts-in-motion-advocacy';
         
-        // --- FAQ Logic ---
-        document.querySelectorAll('.faq-question').forEach(question => {
-            question.addEventListener('click', () => {
-                const answer = question.nextElementSibling;
-                if (answer.style.display === 'block') {
-                    answer.style.display = 'none';
+        // --- Global Variables and Constants ---
+        const PACTS_COUNT_STORAGE_KEY = 'heartsInMotionPactsCount';
+        const INITIAL_PACT_COUNT = 4120;
+        const PACT_INCREMENT = 1;
+        
+        // --- Fact Array for "Did You Know" Toasts ---
+        const didYouKnowFacts = [
+            "Did You Know? Stress can elevate blood pressure by constricting blood vessels, making adherence harder.",
+            "Did You Know? In some African settings, transport costs to the clinic can be up to 30% of a family's weekly income.",
+            "Did You Know? Hypertension is often called the 'silent killer' because it usually has no symptoms until it causes a crisis.",
+            "Did You Know? The 15-Minute Support Pact is designed to reduce your cognitive load, making life-saving habits easier.",
+            "Did You Know? Structural Violence refers to harm caused by social institutions and policies, not individual behavior.",
+            "Did You Know? A healthy blood pressure is typically below 120/80 mmHg. Monitoring is key!",
+            "Did You Know? Poor sleep quality is directly linked to higher blood pressure and increased stress.",
+            "Did You Know? Sharing just one chore a week can significantly reduce the overall stress in a caregiving household.",
+            "Did You Know? Human Factors Engineering (HFE) principles are used in this project to create fail-safe solutions.",
+            "Did You Know? Up to 33% of adults in peri-urban African settings are affected by hypertension.",
+            "Did You Know? The 'Vicious Cycle' explains why effort alone often isn't enough to manage chronic conditions under stress.",
+            "Did You Know? Policy changes related to public transport and clinic access are critical structural solutions.",
+            "Did You Know? You can control up to 80% of your risk factors for heart disease through lifestyle changes and support.",
+            "Did You Know? Salt reduction is one of the fastest ways to see a drop in blood pressure readings.",
+            "Did You Know? The goal is 'Beyond Compliance'—meaning we focus on fixing the environment, not blaming the patient."
+        ];
+
+
+        // --- Functions ---
+
+        /**
+         * Initializes and animates the global pacts counter.
+         */
+        function initializePactsCounter() {
+            const counterElement = document.getElementById('pacts-counter');
+            let currentCount = parseInt(localStorage.getItem(PACTS_COUNT_STORAGE_KEY)) || INITIAL_PACT_COUNT;
+
+            const updateCounter = () => {
+                counterElement.textContent = currentCount.toLocaleString();
+                localStorage.setItem(PACTS_COUNT_STORAGE_KEY, currentCount.toString());
+            };
+
+            // Simple animation from 0 to current count (optional)
+            let startCount = INITIAL_PACT_COUNT - 50; 
+            const duration = 2000;
+            const startTime = performance.now();
+
+            const animateCount = (timestamp) => {
+                const elapsed = timestamp - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const animatedValue = Math.floor(startCount + (currentCount - startCount) * progress);
+                counterElement.textContent = animatedValue.toLocaleString();
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateCount);
                 } else {
-                    // Hide all other open answers (optional for cleaner UI)
-                    document.querySelectorAll('.faq-answer').forEach(a => a.style.display = 'none');
-                    answer.style.display = 'block';
+                    updateCounter(); // Ensure final value is set
                 }
-            });
-        });
+            };
+            requestAnimationFrame(animateCount);
+        }
 
-        // --- Structural Stress Score Calculation ---
-        window.calculateStressScore = function() {
-            const q1 = parseInt(document.getElementById('q1').value);
-            const q2 = parseInt(document.getElementById('q2').value);
-            const q3 = parseInt(document.getElementById('q3').value);
+        /**
+         * Logic for the R-Loop (Caregiving Burden) visualization.
+         */
+        function updateRLoopVisualization() {
+            const slider = document.getElementById('burdenSlider');
+            const icon = document.getElementById('r-loop-icon');
+            const insight = document.getElementById('r-loop-insight');
+            const value = parseInt(slider.value);
 
-            // Simple scoring: max score = 4 (Q1) + 3 (Q2) + 3 (Q3) = 10
-            const totalScore = q1 + q2 + q3;
-            let interpretation = "";
+            let iconText, color, message, scale;
 
-            if (totalScore <= 4) {
-                interpretation = "Low Structural Stress. Your current system (care support, access, cognitive load) is highly resilient.";
-            } else if (totalScore <= 7) {
-                interpretation = "Moderate Structural Stress. You are dealing with significant burdens and access challenges. The Support Pact is highly recommended.";
+            if (value < 30) {
+                // Low Burden
+                iconText = '❤️';
+                color = '#4ade80'; // Green
+                message = 'Insight: Balanced support leads to better heart health and lower stress.';
+                scale = 'scale(1.2)';
+            } else if (value < 70) {
+                // Moderate Burden
+                iconText = '💛';
+                color = '#fbbf24'; // Yellow
+                message = 'Insight: Stress is increasing. Risk is moderate. Support is needed.';
+                scale = 'scale(1)';
             } else {
-                interpretation = "High Structural Stress. You face critical barriers (high burden/poor access) that directly threaten adherence. Action is urgent to prevent burnout and health decline.";
+                // High Burden
+                iconText = '💔';
+                color = '#ef4444'; // Red
+                message = 'Insight: Severe Stress Trap! Adherence is failing, and health is at risk.';
+                scale = 'scale(0.8)';
             }
 
-            document.getElementById('finalScore').textContent = totalScore;
-            document.getElementById('scoreInterpretation').textContent = interpretation;
-            document.getElementById('scoreResult').classList.remove('hidden');
+            icon.textContent = iconText;
+            icon.style.color = color;
+            icon.style.transform = scale;
+            insight.textContent = message;
+            insight.style.color = color;
         }
 
-        // --- Canvas Drawing Logic (Interactive CLD Visualization) ---
-        function drawGraph() {
-            // ... (rest of the drawGraph logic remains the same as previous iteration) ...
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        /**
+         * Logic for the Structural Stress Score calculator.
+         */
+        function calculateStructuralStressScore() {
+            const q1 = parseInt(document.querySelector('input[name="q1"]:checked').value);
+            const q2 = parseInt(document.querySelector('input[name="q2"]:checked').value);
+            const q3 = parseInt(document.querySelector('input[name="q3"]:checked').value);
+            const score = q1 + q2 + q3;
+            const maxScore = 7 + 5 + 5; // Max possible score is 17
 
-            const parentWidth = canvas.parentElement.clientWidth;
-            canvas.width = parentWidth;
-            const width = canvas.width;
-            const height = canvas.height;
+            const currentScoreEl = document.getElementById('current-score');
+            const diagnosisEl = document.getElementById('score-diagnosis');
 
-            const p = 30;
-            const graphWidth = width - 2 * p;
-            const graphHeight = height - 2 * p;
+            currentScoreEl.textContent = `${score} / ${maxScore}`;
 
-            // Draw Axes
-            ctx.strokeStyle = '#4B5563'; 
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(p, p);
-            ctx.lineTo(p, height - p);
-            ctx.lineTo(width - p, height - p);
-            ctx.stroke();
+            let diagnosisText, colorClass;
 
-            // Axis Labels
-            ctx.fillStyle = '#9CA3AF';
-            ctx.font = '12px Inter, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('Caregiving Burden / Stress (X)', width / 2, height - 5);
-            ctx.save();
-            ctx.translate(10, height / 2);
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillText('Medication Adherence (Y)', 0, 0);
-            ctx.restore();
+            if (score <= 5) {
+                diagnosisText = "Diagnosis: Low Stress. Maintain your current support system, but stay aware of potential traps.";
+                colorClass = 'text-green-400';
+            } else if (score <= 10) {
+                diagnosisText = "Diagnosis: Moderate Stress Risk. You are feeling the pressure. Starting the 15-Minute Support Pact is highly recommended.";
+                colorClass = 'text-yellow-400';
+            } else {
+                diagnosisText = "Diagnosis: High Risk. You are caught in a severe Stress Trap. Start the 15-Minute Support Pact *right now* to break the cycle and protect your heart.";
+                colorClass = 'text-red-400';
+            }
+
+            // Apply color coding and text
+            diagnosisEl.className = `mt-2 font-semibold ${colorClass}`;
+            diagnosisEl.textContent = diagnosisText;
+        }
+        
+        /**
+         * Handles the pact commitment button click.
+         */
+        function handleCommitPact() {
+            const messageEl = document.getElementById('commit-message');
+            const counterElement = document.getElementById('pacts-counter');
             
-            ctx.textAlign = 'left';
-            ctx.fillText('High', p + 5, p + 5);
-            ctx.fillText('Low', p + 5, height - p + 15);
-            
-            ctx.textAlign = 'right';
-            ctx.fillText('Low', p - 5, height - p + 15);
-            ctx.fillText('High', width - p, height - p + 15);
+            // 1. Update Counter
+            let currentCount = parseInt(localStorage.getItem(PACTS_COUNT_STORAGE_KEY)) || INITIAL_PACT_COUNT;
+            currentCount += PACT_INCREMENT;
+            counterElement.textContent = currentCount.toLocaleString();
+            localStorage.setItem(PACTS_COUNT_STORAGE_KEY, currentCount.toString());
 
-            const burden = parseInt(slider.value, 10);
-            const adherence = 100 - burden;
-            const x = p + (burden / 100) * graphWidth;
-            const y = p + (1 - adherence / 100) * graphHeight;
+            // 2. Show Success Message
+            messageEl.textContent = "SUCCESS! Your Support Pact has been recorded. Check the 'Support Broader Change' section below to sign up for your 1-Page Starter Guide.";
+            messageEl.classList.remove('hidden', 'text-gray-400');
+            messageEl.classList.add('text-green-400');
 
-            // Draw the Inverse Relationship Line (for reference)
-            ctx.strokeStyle = '#7DD3FC';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(p, height - p);
-            ctx.lineTo(width - p, p);
-            ctx.stroke();
-            
-            // Draw the current data point (The Stress Point)
-            ctx.fillStyle = '#F87171';
-            ctx.shadowColor = 'rgba(248, 113, 113, 1)';
-            ctx.shadowBlur = 10;
-            ctx.beginPath();
-            ctx.arc(x, y, 6, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.shadowBlur = 0;
-
-            // Label the point
-            ctx.fillStyle = '#F87171';
-            ctx.textAlign = x > width / 2 ? 'right' : 'left';
-            ctx.fillText('Your Stress Point', x + (x > width / 2 ? -10 : 10), y - 10);
+            // 3. Simple toast confirmation (optional, as we have the message element)
+            showToast('Pact committed! Thank you for joining the movement.', 'green');
         }
 
-        // Event listener for slider
-        slider.addEventListener('input', drawGraph);
+        /**
+         * Handles the email submission for support.
+         */
+        function handleSubmitEmail() {
+            const emailInput = document.getElementById('support-email');
+            const messageEl = document.getElementById('email-submit-message');
+            const email = emailInput.value.trim();
 
-        // Initial draw and redraw on window resize for responsiveness
-        window.addEventListener('resize', drawGraph);
-        window.addEventListener('load', drawGraph);
+            if (!email || !email.includes('@') || !email.includes('.')) {
+                showToast('Please enter a valid email address.', 'red');
+                return;
+            }
+
+            // Simulate API submission
+            console.log(`Simulating email submission for: ${email}. Sending to munotidaishe@gmail.com.`);
+            
+            emailInput.value = ''; // Clear input
+            messageEl.textContent = `Success! Thank you for your support. Your Starter Guide request is logged for ${email}. Check your inbox in 24-48 hours.`;
+            messageEl.classList.remove('hidden');
+            showToast('Support email submitted! Check your inbox soon.', 'green');
+        }
+
+
+        // --- "Did You Know" Toast Notification System ---
+
+        /**
+         * Creates and displays a toast notification.
+         * @param {string} message The text content of the toast.
+         * @param {string} type 'green' for success, 'red' for error, default for info.
+         */
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let borderColor = '#58a6ff'; // Accent Blue (info)
+            if (type === 'green') borderColor = '#4ade80';
+            if (type === 'red') borderColor = '#ef4444';
+
+            toast.className = 'toast border-l-4 transition-all duration-300';
+            toast.style.borderColor = borderColor;
+            toast.textContent = message;
+            
+            container.appendChild(toast);
+            
+            // Show the toast
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10); 
+
+            // Hide and remove the toast
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                }, 500); // Wait for the transition to finish
+            }, 8000); // Display time
+        }
+
+        /**
+         * Starts the random fact notification loop.
+         */
+        function startFactNotifications() {
+            const displayRandomFact = () => {
+                const randomIndex = Math.floor(Math.random() * didYouKnowFacts.length);
+                const fact = didYouKnowFacts[randomIndex];
+                showToast(`🧠 ${fact}`, 'info');
+
+                // Random delay between 15 and 45 seconds (15000ms to 45000ms)
+                const nextDelay = Math.random() * 30000 + 15000;
+                setTimeout(displayRandomFact, nextDelay);
+            };
+
+            // Start after an initial 5-second delay
+            setTimeout(displayRandomFact, 5000);
+        }
+        
+        // --- Event Listeners and Initialization ---
+
+        window.onload = function() {
+            initializePactsCounter();
+            updateRLoopVisualization(); // Initialize R-Loop visualization
+            startFactNotifications();
+
+            // Set up all dynamic listeners
+            document.getElementById('burdenSlider').addEventListener('input', updateRLoopVisualization);
+            document.getElementById('calculate-score-btn').addEventListener('click', calculateStructuralStressScore);
+            document.getElementById('commit-pact-btn').addEventListener('click', handleCommitPact);
+            document.getElementById('submit-email-btn').addEventListener('click', handleSubmitEmail);
+
+            // Mock language switch behavior (only English content is present)
+            document.getElementById('lang-en').addEventListener('click', () => {
+                document.getElementById('lang-en').classList.add('bg-accent', 'text-primary');
+                document.getElementById('lang-sh').classList.remove('bg-accent', 'text-primary');
+            });
+            document.getElementById('lang-sh').addEventListener('click', () => {
+                document.getElementById('lang-sh').classList.add('bg-accent', 'text-primary');
+                document.getElementById('lang-en').classList.remove('bg-accent', 'text-primary');
+                showToast('Shona translation coming soon!', 'info');
+            });
+
+            // Run initial score calculation
+            calculateStructuralStressScore();
+        };
+
+        
     </script>
-
-    <!-- Footer for quick sharing -->
-    <footer class="max-w-5xl mx-auto mt-16 text-center text-gray-500 text-sm p-6 border-t border-gray-700">
-        <p class="text-gray-400">&copy; Final Project GPSI. Designed by <span class="text-yellow-400 font-bold">Munotidaishe Mantiziba (MOON)</span>.</p>
-        <p class="mt-2 text-gray-500">A system-level intervention inspired by Structural Violence, HFE, and the real voices of the community.</p>
-    </footer>
 </body>
 </html>
